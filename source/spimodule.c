@@ -94,7 +94,7 @@ SPI_dealloc(SPI *self)
 	PyObject *ref = SPI_close(self);
 	Py_XDECREF(ref);
 
-	self->ob_type->tp_free((PyObject *)self);
+	Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
 #define MAXPATH 16
@@ -131,11 +131,11 @@ SPI_writebytes(SPI *self, PyObject *args)
 
 	for (ii = 0; ii < len; ii++) {
 		PyObject *val = PyList_GET_ITEM(list, ii);
-		if (!PyInt_Check(val)) {
+		if (!PyLong_Check(val)) {
 			PyErr_SetString(PyExc_TypeError, wrmsg);
 			return NULL;
 		}
-		buf[ii] = (__u8)PyInt_AS_LONG(val);
+		buf[ii] = (__u8)PyLong_AS_LONG(val);
 	}
 
 	status = write(self->fd, &buf[0], len);
@@ -237,14 +237,14 @@ SPI_xfer(SPI *self, PyObject *args)
 
 	for (ii = 0; ii < len; ii++) {
 		PyObject *val = PyList_GET_ITEM(list, ii);
-		if (!PyInt_Check(val)) {
+		if (!PyLong_Check(val)) {
 			free(txbuf);
 			free(rxbuf);
 			free(xferptr);
 			PyErr_SetString(PyExc_TypeError, wrmsg);
 			return NULL;
 		}
-		txbuf[ii] = (__u8)PyInt_AS_LONG(val);
+		txbuf[ii] = (__u8)PyLong_AS_LONG(val);
 		xferptr[ii].tx_buf = (unsigned long)&txbuf[ii];
 		xferptr[ii].rx_buf = (unsigned long)&rxbuf[ii];
 		xferptr[ii].len = 1;
@@ -315,13 +315,13 @@ SPI_xfer2(SPI *self, PyObject *args)
 
 	for (ii = 0; ii < len; ii++) {
 		PyObject *val = PyList_GET_ITEM(list, ii);
-		if (!PyInt_Check(val)) {
+		if (!PyLong_Check(val)) {
 			free(txbuf);
 			free(rxbuf);
 			PyErr_SetString(PyExc_TypeError, msg);
 			return NULL;
 		}
-		txbuf[ii] = (__u8)PyInt_AS_LONG(val);
+		txbuf[ii] = (__u8)PyLong_AS_LONG(val);
 	}
 
 	xfer.tx_buf = (unsigned long)txbuf;
@@ -447,13 +447,13 @@ SPI_set_mode(SPI *self, PyObject *val, void *closure)
 			"Cannot delete attribute");
 		return -1;
 	}
-	else if (!PyInt_Check(val)) {
+	else if (!PyLong_Check(val)) {
 		PyErr_SetString(PyExc_TypeError,
 			"The mode attribute must be an integer");
 		return -1;
 	}
 
-	mode = PyInt_AsLong(val);
+	mode = PyLong_AsLong(val);
 
 	if ( mode > 3 ) {
 		PyErr_SetString(PyExc_TypeError,
@@ -601,13 +601,13 @@ SPI_set_bpw(SPI *self, PyObject *val, void *closure)
 			"Cannot delete attribute");
 		return -1;
 	}
-	else if (!PyInt_Check(val)) {
+	else if (!PyLong_Check(val)) {
 		PyErr_SetString(PyExc_TypeError,
 			"The bpw attribute must be an integer");
 		return -1;
 	}
 
-	bits = PyInt_AsLong(val);
+	bits = PyLong_AsLong(val);
 
         if (bits < 8 || bits > 16) {
 		PyErr_SetString(PyExc_TypeError,
@@ -642,13 +642,13 @@ SPI_set_msh(SPI *self, PyObject *val, void *closure)
 			"Cannot delete attribute");
 		return -1;
 	}
-	else if (!PyInt_Check(val)) {
+	else if (!PyLong_Check(val)) {
 		PyErr_SetString(PyExc_TypeError,
 			"The msh attribute must be an integer");
 		return -1;
 	}
 
-	msh = PyInt_AsLong(val);
+	msh = PyLong_AsLong(val);
 	// DAW - 8/12/12 - removed limitation on SPI speed
 	// if (8000000 < msh) {
 		// PyErr_SetString(PyExc_TypeError,
@@ -793,8 +793,7 @@ static PyMethodDef SPI_methods[] = {
 };
 
 static PyTypeObject SPI_type = {
-	PyObject_HEAD_INIT(NULL)
-	0,				/* ob_size */
+	PyVarObject_HEAD_INIT(NULL, 0)				/* ob_size */
 	"SPI",			/* tp_name */
 	sizeof(SPI),			/* tp_basicsize */
 	0,				/* tp_itemsize */
@@ -841,15 +840,35 @@ static PyMethodDef SPI_module_methods[] = {
 #ifndef PyMODINIT_FUNC	/* declarations for DLL import/export */
 #define PyMODINIT_FUNC void
 #endif
+#if PY_MAJOR_VERSION >= 3
+static struct PyModuleDef moduledef = {
+	PyModuleDef_HEAD_INIT,
+	"SPI",/* m_name */
+	SPI_module_doc,/* m_doc */
+	0,/* m_size */
+	SPI_module_methods,/* m_methods */
+	NULL,/* m_reload */
+	NULL,/* m_traverse */
+	NULL,/* m_clear */
+	NULL,/* m_free */ 
+};
+#define MOD_ERROR_VAL NULL
+#else
+#define MOD_ERROR_VAL
+#endif
 PyMODINIT_FUNC
 initSPI(void)
 {
 	PyObject* m;
 
 	if (PyType_Ready(&SPI_type) < 0)
-		return;
+		return MOD_ERROR_VAL;
 
+	#if PY_MAJOR_VERSION >= 3
+	m = PyModule_Create(&moduledef);
+	#else
 	m = Py_InitModule3("SPI", SPI_module_methods, SPI_module_doc);
+	#endif
 	Py_INCREF(&SPI_type);
 	PyModule_AddObject(m, "SPI", (PyObject *)&SPI_type);
 }
