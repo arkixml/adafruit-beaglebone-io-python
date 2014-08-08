@@ -224,7 +224,7 @@ int lookup_uart_by_name(const char *input_name, char *dt)
             return 1;                
         }
     }
-    fprintf(stderr, "return 0 lookup_uart_by_name");
+    fputs("return 0 lookup_uart_by_name", stderr);
     return 0;
 }
 
@@ -300,7 +300,7 @@ int get_adc_ain(const char *key, unsigned int *ain)
 int get_uart_device_tree_name(const char *name, char *dt)
 {
     if (!lookup_uart_by_name(name, dt)) {
-      fprintf(stderr, "return 0 get_uart");
+      fputs("return 0 get_uart", stderr);
         return 0;
     }
 
@@ -382,7 +382,7 @@ int load_device_tree(const char *name)
     }
 
     //if the device isn't already loaded, load it, and return
-    fprintf(file, name);
+    fputs(name, file);
     fclose(file);
 
     //0.2 second delay
